@@ -9,15 +9,17 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-distutils \
     curl \
-    wget \
     git \
     netcat \
+    net-tools \
     telnet \
     dnsutils \
     iputils-ping \
     nmap \
     software-properties-common \
-    sudo
+    sudo \
+    wget \
+    vim
 
 # Install Python 3.12
 RUN add-apt-repository ppa:deadsnakes/ppa && \
@@ -43,7 +45,7 @@ RUN echo 'sammy:sammysheu' | chpasswd
 
 # Set up SSH for sammy
 RUN mkdir -p /home/sammy/.ssh
-COPY publish_keys/id_rsa.pub /home/sammy/.ssh/authorized_keys
+COPY public_keys/id_rsa.pub /home/sammy/.ssh/authorized_keys
 RUN chown sammy:root /home/sammy/.ssh/authorized_keys && \
     chmod 600 /home/sammy/.ssh/authorized_keys
 
@@ -56,22 +58,17 @@ RUN rm -rf /var/lib/apt/lists/*
 COPY pip_packages/requirements.txt requirements.txt
 RUN pip install --use-pep517 -r requirements.txt
 
-# Install VSCode Server
-RUN curl -fsSL https://code-server.dev/install.sh | sh
+# Copy VSCode Server setup script
+COPY vscode-server-setup.sh /tmp/vscode-server-setup.sh
+RUN chmod +x /tmp/vscode-server-setup.sh
 
-# Set up code-server configuration directory
-RUN mkdir -p /home/sammy/.config/code-server && \
-    chown -R sammy:root /home/sammy/.config
+# Run VSCode Server setup script
+# RUN /tmp/vscode-server-setup.sh && rm /tmp/vscode-server-setup.sh
 
-# Copy the SSH public key for code-server authentication
-COPY publish_keys/id_rsa.pub /home/sammy/.config/code-server/authorized_keys
-RUN chown sammy:root /home/sammy/.config/code-server/authorized_keys && \
-    chmod 600 /home/sammy/.config/code-server/authorized_keys
+EXPOSE 22
 
-EXPOSE 22 8080
-
-# Create a startup script
+# Copy startup script
 COPY start-services.sh /start-services.sh
 RUN chmod +x /start-services.sh
-
+WORKDIR /root
 CMD ["/start-services.sh"]
